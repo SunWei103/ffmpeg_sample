@@ -1,0 +1,26 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "compilerPath": "C:\\Program Files\\mingw-w64\\x86_64-8.1.0-posix-seh-rt_v6-rev0\\mingw64\\bin\\g++.exe",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "clang-x64"
+        }
+    ],
+    "version": 4
+}
