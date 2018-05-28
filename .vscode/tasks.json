@@ -8,7 +8,20 @@
             "type": "shell",
             "command": "g++",
             "args": [
-                "-g", "demo_player.cpp", "-o", "${workspaceRoot}\\${fileBasename}.exe"
+                "-g", 
+                "demo_player.cpp", 
+                "-I", ".\\include", 
+                "-o", "${workspaceRoot}\\demo_player.exe",
+                "-static",
+                "-L.\\lib",
+                "-lavformat.dll", 
+                "-lavcodec.dll", 
+                "-lavutil.dll", 
+                "-lavfilter.dll", 
+                "-lswscale.dll", 
+                "-lavdevice.dll", 
+                "-lswresample.dll",
+                "-lm"
             ],
             "group": {
                 "kind": "build",
