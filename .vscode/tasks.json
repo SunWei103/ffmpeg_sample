@@ -8,7 +8,7 @@
             "type": "shell",
             "command": "g++",
             "args": [
-                "-g", 
+                "-g", "-Wno-deprecated-declarations",
                 "demo_player.cpp", 
                 "-I", ".\\include", 
                 "-o", "${workspaceRoot}\\demo_player.exe",
