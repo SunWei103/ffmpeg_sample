@@ -21,6 +21,8 @@
                 "-lswscale.dll", 
                 "-lavdevice.dll", 
                 "-lswresample.dll",
+                ".\\lib\\SDL2.lib",
+                ".\\lib\\SDL2main.lib",
                 "-lm"
             ],
             "group": {
