@@ -107,14 +107,16 @@ int WinMain()
             av_free_packet(packet);
             continue;
         }
-
+        
         ret = avcodec_decode_video2(codec_ctx, frame, &got_picture, packet);
         if (ret < 0) {
             printf("Decode Error.\n");
+            av_free_packet(packet);
             return -1;
         }
 
         if (got_picture == 0) {
+            av_free_packet(packet);
             continue;
         }
 
@@ -128,6 +130,8 @@ int WinMain()
         SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, &sdl_rect);
         SDL_RenderPresent(sdl_renderer);
 
+        av_free_packet(packet);
+        
         SDL_Delay(40);
     }
 
