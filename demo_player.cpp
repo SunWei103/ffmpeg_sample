@@ -69,24 +69,24 @@ int WinMain()
     frame = av_frame_alloc();
     frame_yuv = av_frame_alloc();
 
-    out_buffer = (unsigned char*)av_malloc(av_image_get_buffer_size(AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1));
-    av_image_fill_arrays(frame_yuv->data, frame_yuv->linesize, out_buffer, AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
+    screen_w = codec_ctx->width * 2;
+    screen_h = codec_ctx->height * 2;
+
+    out_buffer = (unsigned char*)av_malloc(av_image_get_buffer_size(AV_PIX_FMT_YUV420P, screen_w, screen_h, 1));
+    av_image_fill_arrays(frame_yuv->data, frame_yuv->linesize, out_buffer, AV_PIX_FMT_YUV420P, screen_w, screen_h, 1);
 
     packet = (AVPacket*)av_malloc(sizeof(AVPacket));
     printf("--------------- File Information ----------------\n");
     av_dump_format(format_ctx, 0, file_path, 0);
     printf("-------------------------------------------------\n");
 
-    img_convert_ctx = sws_getContext(codec_ctx->width, codec_ctx->height, codec_ctx->pix_fmt, codec_ctx->width, codec_ctx->height,
+    img_convert_ctx = sws_getContext(codec_ctx->width, codec_ctx->height, codec_ctx->pix_fmt, screen_w, screen_h,
         AV_PIX_FMT_YUV420P, SWS_BICUBIC, NULL, NULL, NULL);
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER)) {
         printf("Could not initialize SDL - %s\n", SDL_GetError());
         return -1;
     }
-
-    screen_w = codec_ctx->width;
-    screen_h = codec_ctx->height;
 
     screen = SDL_CreateWindow("SDL Window demo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, screen_w, screen_h, SDL_WINDOW_OPENGL);
     if (screen == 0) {
@@ -95,7 +95,7 @@ int WinMain()
     }
 
     sdl_renderer = SDL_CreateRenderer(screen, -1, 0);
-    sdl_texture = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_IYUV, SDL_TEXTUREACCESS_STREAMING, codec_ctx->width, codec_ctx->height);
+    sdl_texture = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_IYUV, SDL_TEXTUREACCESS_STREAMING, screen_w, screen_h);
 
     sdl_rect.x = 0;
     sdl_rect.y = 0;
