@@ -6,7 +6,7 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "g++",
+            "command": "x86_64-w64-mingw32-g++",
             "args": [
                 "-g", "-Wno-deprecated-declarations",
                 "demo_player.cpp", 
