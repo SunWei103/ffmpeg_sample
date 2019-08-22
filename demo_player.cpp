@@ -45,7 +45,7 @@ void showColorRatioByChannel(int channel, cv::Mat &rgb_mat)
     minMaxLoc(dsthist, 0, &g_dhistmaxvalue, 0, 0);
     for (int i = 0; i < COLOR_BLOCK_SIZE; i++)
     {
-        int value = cvRound(HISTOGRAM_IMAGE_HEIGHT * 0.9 * (dsthist.at<float>(i) / g_dhistmaxvalue));
+        int value = cvRound(HISTOGRAM_IMAGE_HEIGHT * (dsthist.at<float>(i) / g_dhistmaxvalue));
         switch (channel)
         {
         case 0:
@@ -83,7 +83,7 @@ void showColorRatioByChannel(int channel, cv::Mat &rgb_mat)
 void showColorRatioBinaryzation(long sn, cv::Mat &rgb_mat)
 {
     int c_count = 0;
-    static cv::Mat vdrawImage = Mat::zeros(Size(HISTOGRAM_IMAGE_WIDTH * 10, HISTOGRAM_IMAGE_HEIGHT), CV_8UC3);
+    static cv::Mat vdrawImage = Mat::zeros(Size(HISTOGRAM_IMAGE_WIDTH * 3, HISTOGRAM_IMAGE_HEIGHT), CV_8UC3);
 
     cvtColor(rgb_mat, rgb_mat, COLOR_BGR2GRAY);
     threshold(rgb_mat, rgb_mat, 100, 255, THRESH_BINARY);
@@ -97,9 +97,34 @@ void showColorRatioBinaryzation(long sn, cv::Mat &rgb_mat)
             c_count++;
     }
 
-    int value = cvRound(HISTOGRAM_IMAGE_HEIGHT * 0.9 * (c_count * 1.0 / (rgb_mat.rows * rgb_mat.cols)));
-    rectangle(vdrawImage, Point(sn * LINE_WIDTH, vdrawImage.rows - 1), Point(sn * LINE_WIDTH, vdrawImage.rows - 1 - value), Scalar(255, 0, 0), LINE_WIDTH);
-    imshow("BIN", vdrawImage);
+    int value = cvRound(HISTOGRAM_IMAGE_HEIGHT * (c_count * 1.0 / (rgb_mat.rows * rgb_mat.cols)));
+    rectangle(vdrawImage, Point(sn * LINE_WIDTH, vdrawImage.rows - 2 - value), Point(sn * LINE_WIDTH, vdrawImage.rows - 1 - value), Scalar(255, 0, 0), LINE_WIDTH);
+    imshow("Binaryzation", vdrawImage);
+}
+
+void showColorRatioByYUVBlack(long sn, AVFrame *frame)
+{
+    int i,j,c_count = 0;;
+
+    for (i = 0; i < frame->height; i++)
+    {
+        for (j = 0; j < frame->width; j++)
+        {
+            uint8_t y = *(frame->data[0] + i * frame->linesize[0] + j);
+            uint8_t u = *(frame->data[1] + i / 2 * frame->linesize[1] + j / 2);
+            uint8_t v = *(frame->data[2] + i / 2 * frame->linesize[2] + j / 2);
+
+            if (y < 24 && u >= 124 && u <= 132 && v >= 124 && v <= 132)
+            {
+                c_count++;
+            }
+        }
+    }
+
+    static cv::Mat vdrawImage = Mat::zeros(Size(HISTOGRAM_IMAGE_WIDTH * 3, HISTOGRAM_IMAGE_HEIGHT), CV_8UC3);
+    int value = cvRound(HISTOGRAM_IMAGE_HEIGHT * (c_count * 1.0 / (frame->height * frame->width)));
+    rectangle(vdrawImage, Point(sn * LINE_WIDTH, vdrawImage.rows - 2 - value), Point(sn * LINE_WIDTH, vdrawImage.rows - 1 - value), Scalar(0, 0, 255), LINE_WIDTH);
+    imshow("YUV Black", vdrawImage);
 }
 
 void showColorRatioByValue(long sn, unsigned char r, unsigned char g, unsigned b, cv::Mat &rgb_mat)
@@ -126,7 +151,7 @@ void showColorRatioByValue(long sn, unsigned char r, unsigned char g, unsigned b
         }
     }
 
-    int value = cvRound(HISTOGRAM_IMAGE_HEIGHT * 0.9 * (c_count * 1.0 / (rgb_mat.rows * rgb_mat.cols)));
+    int value = cvRound(HISTOGRAM_IMAGE_HEIGHT * (c_count * 1.0 / (rgb_mat.rows * rgb_mat.cols)));
     rectangle(vdrawImage, Point(sn * LINE_WIDTH, vdrawImage.rows - 1), Point(sn * LINE_WIDTH, vdrawImage.rows - 1 - value), Scalar(255, 0, 0), LINE_WIDTH);
     imshow("RGB", vdrawImage);
 }
@@ -170,11 +195,10 @@ int main()
     AVPacket *packet;
     unsigned char *out_buffer;
     struct SwsContext *img_convert_ctx;
-    char file_path[] = "bigbuckbunny_480x272.h265";
+    char file_path[] = "bigbuckbunny_480x272.h265";//bigbuckbunny_640x480.h265
     int ret, v_index = -1;
     int got_picture;
     long frame_count = 0;
-
     int screen_w = 0, screen_h = 0;
 #ifdef USE_SDL
     SDL_Window *screen;
@@ -182,9 +206,7 @@ int main()
     SDL_Texture *sdl_texture;
     SDL_Rect sdl_rect;
 #endif
-#ifdef USE_OPENCV
-    cv::Mat yuvImg;
-#endif
+
     av_register_all();
     avformat_network_init();
 
@@ -232,6 +254,7 @@ int main()
     }
 
     frame = av_frame_alloc();
+#ifdef USE_SDL
     frame_yuv = av_frame_alloc();
 
     screen_w = codec_ctx->width * 2;
@@ -239,15 +262,15 @@ int main()
 
     out_buffer = (unsigned char *)av_malloc(av_image_get_buffer_size(AV_PIX_FMT_YUV420P, screen_w, screen_h, 1));
     av_image_fill_arrays(frame_yuv->data, frame_yuv->linesize, out_buffer, AV_PIX_FMT_YUV420P, screen_w, screen_h, 1);
-
+#endif
     packet = (AVPacket *)av_malloc(sizeof(AVPacket));
     printf("--------------- File Information ----------------\n");
     av_dump_format(format_ctx, 0, file_path, 0);
     printf("-------------------------------------------------\n");
-
+#ifdef USE_SDL
     img_convert_ctx = sws_getContext(codec_ctx->width, codec_ctx->height, codec_ctx->pix_fmt, screen_w, screen_h,
                                      AV_PIX_FMT_YUV420P, SWS_BICUBIC, NULL, NULL, NULL);
-#ifdef USE_SDL
+
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER))
     {
         printf("Could not initialize SDL - %s\n", SDL_GetError());
@@ -302,6 +325,8 @@ int main()
         SDL_RenderPresent(sdl_renderer);
 #endif
 #ifdef USE_OPENCV
+        showColorRatioByYUVBlack(frame_count, frame);
+
         cv::Mat rgbImg;
         rgbImg = avframe_to_cvmat(frame);
         cv::imshow("Video", rgbImg);
@@ -310,8 +335,9 @@ int main()
         showColorRatioByChannel(1, rgbImg);
         showColorRatioByChannel(2, rgbImg);
 
-        showColorRatioBinaryzation(frame_count++, rgbImg);
+        showColorRatioBinaryzation(frame_count, rgbImg);
 
+        frame_count++;
 #endif
         av_free_packet(packet);
 #ifdef USE_SDL
@@ -329,8 +355,9 @@ int main()
         {
             break;
         }
-        sws_scale(img_convert_ctx, frame->data, frame->linesize, 0, codec_ctx->height, frame_yuv->data, frame_yuv->linesize);
 #ifdef USE_SDL
+        sws_scale(img_convert_ctx, frame->data, frame->linesize, 0, codec_ctx->height, frame_yuv->data, frame_yuv->linesize);
+
         SDL_UpdateYUVTexture(sdl_texture, &sdl_rect,
                              frame_yuv->data[0], frame_yuv->linesize[0],
                              frame_yuv->data[1], frame_yuv->linesize[1],
@@ -342,23 +369,29 @@ int main()
         SDL_Delay(40);
 #endif
 #ifdef USE_OPENCV
+        showColorRatioByYUVBlack(frame_count, frame);
+
         cv::Mat rgbImg;
         rgbImg = avframe_to_cvmat(frame);
-        cv::imshow("rgb", rgbImg);
+        cv::imshow("Video", rgbImg);
 
         showColorRatioByChannel(0, rgbImg);
         showColorRatioByChannel(1, rgbImg);
         showColorRatioByChannel(2, rgbImg);
 
+        showColorRatioBinaryzation(frame_count, rgbImg);
+
+        frame_count++;
+        
         cv::waitKey(1000 / 25);
 #endif
     }
 
-    sws_freeContext(img_convert_ctx);
 #ifdef USE_SDL
+    sws_freeContext(img_convert_ctx);
     SDL_Quit();
-#endif
     av_frame_free(&frame_yuv);
+#endif
     av_frame_free(&frame);
     avcodec_close(codec_ctx);
     avformat_close_input(&format_ctx);
