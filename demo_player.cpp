@@ -30,6 +30,8 @@ using namespace std;
 
 #define LINE_WIDTH (HISTOGRAM_IMAGE_WIDTH / COLOR_BLOCK_SIZE)
 
+ofstream fout;
+
 void showColorRatioByChannel(int channel, cv::Mat &rgb_mat)
 {
     int histsize[] = {COLOR_BLOCK_SIZE};
@@ -93,7 +95,7 @@ void showColorRatioBinaryzation(long sn, cv::Mat &rgb_mat, int thresh)
     Mat_<uchar>::iterator itend = rgb_mat.end<uchar>();
     for (; it != itend; ++it)
     {
-        if ((*it) > 0)
+        if ((*it) == 0)
             c_count++;
     }
 
@@ -137,7 +139,7 @@ void showColorRatioByYBlack(long sn, AVFrame *frame, int thresh)
         {
             uint8_t y = *(frame->data[0] + i * frame->linesize[0] + j);
 
-            if (y > thresh)
+            if (y < thresh)
             {
                 c_count++;
             }
@@ -145,7 +147,9 @@ void showColorRatioByYBlack(long sn, AVFrame *frame, int thresh)
     }
 
     static cv::Mat vdrawImage = Mat::zeros(Size(HISTOGRAM_IMAGE_WIDTH * 3, HISTOGRAM_IMAGE_HEIGHT), CV_8UC3);
-    int value = cvRound(HISTOGRAM_IMAGE_HEIGHT * (c_count * 1.0 / (frame->height * frame->width)));
+    float ratio = c_count * 1.0 / (frame->height * frame->width);
+    fout << setprecision(3) << ratio << endl;
+    int value = cvRound(HISTOGRAM_IMAGE_HEIGHT * ratio);
     rectangle(vdrawImage, Point(sn * LINE_WIDTH, vdrawImage.rows - 2 - value), Point(sn * LINE_WIDTH, vdrawImage.rows - 1 - value), Scalar(0, 0, 255), LINE_WIDTH);
     imshow("Y Black", vdrawImage);
 }
@@ -229,6 +233,7 @@ int main()
     SDL_Texture *sdl_texture;
     SDL_Rect sdl_rect;
 #endif
+    fout.open("./log.txt", ios::in|ios::out|ios::trunc);
 
     av_register_all();
     avformat_network_init();
@@ -418,6 +423,7 @@ int main()
     av_frame_free(&frame);
     avcodec_close(codec_ctx);
     avformat_close_input(&format_ctx);
+    fout.close();
 
     return 0;
 }
