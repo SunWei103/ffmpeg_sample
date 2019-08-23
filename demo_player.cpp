@@ -80,13 +80,13 @@ void showColorRatioByChannel(int channel, cv::Mat &rgb_mat)
     }
 }
 
-void showColorRatioBinaryzation(long sn, cv::Mat &rgb_mat)
+void showColorRatioBinaryzation(long sn, cv::Mat &rgb_mat, int thresh)
 {
     int c_count = 0;
     static cv::Mat vdrawImage = Mat::zeros(Size(HISTOGRAM_IMAGE_WIDTH * 3, HISTOGRAM_IMAGE_HEIGHT), CV_8UC3);
 
     cvtColor(rgb_mat, rgb_mat, COLOR_BGR2GRAY);
-    threshold(rgb_mat, rgb_mat, 100, 255, THRESH_BINARY);
+    threshold(rgb_mat, rgb_mat, thresh, 255, THRESH_BINARY);
     cv::imshow("Video_Bin", rgb_mat);
 
     Mat_<uchar>::iterator it = rgb_mat.begin<uchar>();
@@ -125,6 +125,29 @@ void showColorRatioByYUVBlack(long sn, AVFrame *frame)
     int value = cvRound(HISTOGRAM_IMAGE_HEIGHT * (c_count * 1.0 / (frame->height * frame->width)));
     rectangle(vdrawImage, Point(sn * LINE_WIDTH, vdrawImage.rows - 2 - value), Point(sn * LINE_WIDTH, vdrawImage.rows - 1 - value), Scalar(0, 0, 255), LINE_WIDTH);
     imshow("YUV Black", vdrawImage);
+}
+
+void showColorRatioByYBlack(long sn, AVFrame *frame, int thresh)
+{
+    int i,j,c_count = 0;;
+
+    for (i = 0; i < frame->height; i++)
+    {
+        for (j = 0; j < frame->width; j++)
+        {
+            uint8_t y = *(frame->data[0] + i * frame->linesize[0] + j);
+
+            if (y > thresh)
+            {
+                c_count++;
+            }
+        }
+    }
+
+    static cv::Mat vdrawImage = Mat::zeros(Size(HISTOGRAM_IMAGE_WIDTH * 3, HISTOGRAM_IMAGE_HEIGHT), CV_8UC3);
+    int value = cvRound(HISTOGRAM_IMAGE_HEIGHT * (c_count * 1.0 / (frame->height * frame->width)));
+    rectangle(vdrawImage, Point(sn * LINE_WIDTH, vdrawImage.rows - 2 - value), Point(sn * LINE_WIDTH, vdrawImage.rows - 1 - value), Scalar(0, 0, 255), LINE_WIDTH);
+    imshow("Y Black", vdrawImage);
 }
 
 void showColorRatioByValue(long sn, unsigned char r, unsigned char g, unsigned b, cv::Mat &rgb_mat)
@@ -325,7 +348,7 @@ int main()
         SDL_RenderPresent(sdl_renderer);
 #endif
 #ifdef USE_OPENCV
-        showColorRatioByYUVBlack(frame_count, frame);
+        showColorRatioByYBlack(frame_count, frame, 100);
 
         cv::Mat rgbImg;
         rgbImg = avframe_to_cvmat(frame);
@@ -335,7 +358,7 @@ int main()
         showColorRatioByChannel(1, rgbImg);
         showColorRatioByChannel(2, rgbImg);
 
-        showColorRatioBinaryzation(frame_count, rgbImg);
+        showColorRatioBinaryzation(frame_count, rgbImg, 100);
 
         frame_count++;
 #endif
@@ -369,7 +392,7 @@ int main()
         SDL_Delay(40);
 #endif
 #ifdef USE_OPENCV
-        showColorRatioByYUVBlack(frame_count, frame);
+        showColorRatioByYBlack(frame_count, frame, 100);
 
         cv::Mat rgbImg;
         rgbImg = avframe_to_cvmat(frame);
@@ -379,7 +402,7 @@ int main()
         showColorRatioByChannel(1, rgbImg);
         showColorRatioByChannel(2, rgbImg);
 
-        showColorRatioBinaryzation(frame_count, rgbImg);
+        showColorRatioBinaryzation(frame_count, rgbImg, 100);
 
         frame_count++;
         
