@@ -129,29 +129,57 @@ void showColorRatioByYUVBlack(long sn, AVFrame *frame)
     imshow("YUV Black", vdrawImage);
 }
 
-void showColorRatioByYBlack(long sn, AVFrame *frame, int thresh)
+// Y420P
+void showColorRatioByYBlack(long sn, AVFrame *frame, int thresh, int devide = 4)
 {
-    int i,j,c_count = 0;;
+    int i, j, c_count = 0;
+    int counter[10][10];
+    int area_w, area_h;
 
-    for (i = 0; i < frame->height; i++)
+    if (devide > 10)
+        devide = 10;
+    area_w = frame->width / devide;
+    area_h = frame->height / devide;
+    memset(counter, 0, sizeof(counter));
+
+    for (i = 0; i < area_h * devide; i++)
     {
-        for (j = 0; j < frame->width; j++)
+        for (j = 0; j < area_w * devide; j++)
         {
             uint8_t y = *(frame->data[0] + i * frame->linesize[0] + j);
 
             if (y < thresh)
             {
-                c_count++;
+                counter[j / area_w][i / area_h]++;
             }
         }
     }
 
     static cv::Mat vdrawImage = Mat::zeros(Size(HISTOGRAM_IMAGE_WIDTH * 3, HISTOGRAM_IMAGE_HEIGHT), CV_8UC3);
-    float ratio = c_count * 1.0 / (frame->height * frame->width);
-    fout << setprecision(3) << ratio << endl;
-    int value = cvRound(HISTOGRAM_IMAGE_HEIGHT * ratio);
-    rectangle(vdrawImage, Point(sn * LINE_WIDTH, vdrawImage.rows - 2 - value), Point(sn * LINE_WIDTH, vdrawImage.rows - 1 - value), Scalar(0, 0, 255), LINE_WIDTH);
-    imshow("Y Black", vdrawImage);
+    if (frame->pict_type == AV_PICTURE_TYPE_I)
+        fout << "I ";
+    else if (frame->pict_type == AV_PICTURE_TYPE_P)
+        fout << "P ";
+    else if (frame->pict_type == AV_PICTURE_TYPE_B)
+        fout << "B ";
+    else
+        fout << "! ";
+
+    for (i = 0; i < devide; i++)
+    {
+        for (j = 0; j < devide; j++)
+        {
+            float ratio = counter[i][j] * 1.0 / (area_w * area_h);
+            fout << setw(10) << setiosflags(ios::left) << setprecision(2) << ratio;
+
+            int value = cvRound(HISTOGRAM_IMAGE_HEIGHT * ratio);
+            Scalar c(255 * (i + 1) / devide, 0, 255 * (j + 1) / devide);
+            rectangle(vdrawImage, Point(sn * LINE_WIDTH, vdrawImage.rows - 2 - value), Point(sn * LINE_WIDTH, vdrawImage.rows - 1 - value), c, LINE_WIDTH);
+            imshow("Y Black", vdrawImage);
+        }
+    }
+
+    fout << endl;
 }
 
 void showColorRatioByValue(long sn, unsigned char r, unsigned char g, unsigned b, cv::Mat &rgb_mat)
@@ -212,7 +240,7 @@ cv::Mat avframe_to_cvmat(AVFrame *frame)
 #ifdef USE_SDL
 int WinMain()
 #else
-int main()
+int main(int argc, char *argv[])
 #endif
 {
     AVFormatContext *format_ctx;
@@ -222,7 +250,7 @@ int main()
     AVPacket *packet;
     unsigned char *out_buffer;
     struct SwsContext *img_convert_ctx;
-    char file_path[] = "bigbuckbunny_480x272.h265";//bigbuckbunny_640x480.h265
+    const char *file_path = argv[1];
     int ret, v_index = -1;
     int got_picture;
     long frame_count = 0;
@@ -353,17 +381,17 @@ int main()
         SDL_RenderPresent(sdl_renderer);
 #endif
 #ifdef USE_OPENCV
-        showColorRatioByYBlack(frame_count, frame, 100);
+        showColorRatioByYBlack(frame_count, frame, 50);
 
         cv::Mat rgbImg;
         rgbImg = avframe_to_cvmat(frame);
         cv::imshow("Video", rgbImg);
 
-        showColorRatioByChannel(0, rgbImg);
-        showColorRatioByChannel(1, rgbImg);
-        showColorRatioByChannel(2, rgbImg);
+        // showColorRatioByChannel(0, rgbImg);
+        // showColorRatioByChannel(1, rgbImg);
+        // showColorRatioByChannel(2, rgbImg);
 
-        showColorRatioBinaryzation(frame_count, rgbImg, 100);
+        showColorRatioBinaryzation(frame_count, rgbImg, 50);
 
         frame_count++;
 #endif
@@ -397,15 +425,15 @@ int main()
         SDL_Delay(40);
 #endif
 #ifdef USE_OPENCV
-        showColorRatioByYBlack(frame_count, frame, 100);
+        showColorRatioByYBlack(frame_count, frame, 150);
 
         cv::Mat rgbImg;
         rgbImg = avframe_to_cvmat(frame);
         cv::imshow("Video", rgbImg);
 
-        showColorRatioByChannel(0, rgbImg);
-        showColorRatioByChannel(1, rgbImg);
-        showColorRatioByChannel(2, rgbImg);
+        // showColorRatioByChannel(0, rgbImg);
+        // showColorRatioByChannel(1, rgbImg);
+        // showColorRatioByChannel(2, rgbImg);
 
         showColorRatioBinaryzation(frame_count, rgbImg, 100);
 
