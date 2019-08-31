@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
-
+#include <vector>
 // #define USE_SDL
 #define USE_OPENCV
 
@@ -17,6 +17,8 @@ extern "C"
 
 #ifdef USE_OPENCV
 #include <opencv2/opencv.hpp>
+#include <opencv2/features2d/features2d.hpp>
+#include <opencv2/highgui/highgui.hpp>
 using namespace cv;
 using namespace std;
 #endif
@@ -156,21 +158,23 @@ void showColorRatioByYBlack(long sn, AVFrame *frame, int thresh, int devide = 4)
     }
 
     static cv::Mat vdrawImage = Mat::zeros(Size(HISTOGRAM_IMAGE_WIDTH * 3, HISTOGRAM_IMAGE_HEIGHT), CV_8UC3);
+    fout << "{";
     if (frame->pict_type == AV_PICTURE_TYPE_I)
-        fout << "I ";
+        fout << "'I'";
     else if (frame->pict_type == AV_PICTURE_TYPE_P)
-        fout << "P ";
+        fout << "'P'";
     else if (frame->pict_type == AV_PICTURE_TYPE_B)
-        fout << "B ";
+        fout << "'B'";
     else
-        fout << "! ";
+        fout << "'!'";
 
     for (i = 0; i < devide; i++)
     {
         for (j = 0; j < devide; j++)
         {
             float ratio = counter[i][j] * 1.0 / (area_w * area_h);
-            fout << setw(10) << setiosflags(ios::left) << setprecision(2) << ratio;
+            // fout << setw(10) << setiosflags(ios::left) << setprecision(2) << ratio;
+            fout << " ," << setw(4) << (int)(ratio * 1000);
 
             int value = cvRound(HISTOGRAM_IMAGE_HEIGHT * ratio);
             Scalar c(255 * (i + 1) / devide, 0, 255 * (j + 1) / devide);
@@ -179,8 +183,18 @@ void showColorRatioByYBlack(long sn, AVFrame *frame, int thresh, int devide = 4)
         }
     }
 
-    fout << endl;
+    fout << "}," << endl;
 }
+
+// void siftImage(long sn, cv::Mat &rgb_mat)
+// {
+//     std::vector<KeyPoint> keyPoints;
+//     cv::SiftFeatureDetector feature;
+
+//     feature.detect(rgb_mat, keyPoints);
+//     drawKeypoints(rgb_mat, keyPoints, rgb_mat, Scalar::all(255), DrawMatchesFlags::DRAW_OVER_OUTIMG);
+//     imshow("SIFT", rgb_mat);
+// }
 
 void showColorRatioByValue(long sn, unsigned char r, unsigned char g, unsigned b, cv::Mat &rgb_mat)
 {
@@ -391,7 +405,8 @@ int main(int argc, char *argv[])
         // showColorRatioByChannel(1, rgbImg);
         // showColorRatioByChannel(2, rgbImg);
 
-        showColorRatioBinaryzation(frame_count, rgbImg, 50);
+        // showColorRatioBinaryzation(frame_count, rgbImg, 50);
+        // siftImage(frame_count, rgbImg);
 
         frame_count++;
 #endif
@@ -435,7 +450,8 @@ int main(int argc, char *argv[])
         // showColorRatioByChannel(1, rgbImg);
         // showColorRatioByChannel(2, rgbImg);
 
-        showColorRatioBinaryzation(frame_count, rgbImg, 100);
+        // showColorRatioBinaryzation(frame_count, rgbImg, 100);
+        // siftImage(frame_count, rgbImg);
 
         frame_count++;
         
