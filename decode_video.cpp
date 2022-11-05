@@ -182,15 +182,16 @@ void showColorRatioByYBlack(long sn, AVFrame *frame, int thresh,
   fout << "}," << endl;
 }
 
-// void siftImage(long sn, cv::Mat &rgb_mat)
-// {
-//     std::vector<KeyPoint> keyPoints;
-//     cv::SiftFeatureDetector feature;
+// TODO: add dependence library of libopencv-nonfree-dev
+void siftImage(long sn, cv::Mat &rgb_mat) {
+  // std::vector<KeyPoint> keyPoints;
+  // Ptr<SIFT> siftDetector = SIFT::create();
 
-//     feature.detect(rgb_mat, keyPoints);
-//     drawKeypoints(rgb_mat, keyPoints, rgb_mat, Scalar::all(255),
-//     DrawMatchesFlags::DRAW_OVER_OUTIMG); imshow("SIFT", rgb_mat);
-// }
+  // siftDetector.detect(rgb_mat, keyPoints);
+  // drawKeypoints(rgb_mat, keyPoints, rgb_mat, Scalar::all(255),
+  //               DrawMatchesFlags::DRAW_OVER_OUTIMG);
+  // imshow("SIFT", rgb_mat);
+}
 
 void showColorRatioByValue(long sn, unsigned char r, unsigned char g,
                            unsigned b, cv::Mat &rgb_mat) {
@@ -250,14 +251,13 @@ int main(int argc, char *argv[]) {
   AVFormatContext *format_ctx;
   AVCodecContext *codec_ctx;
   AVCodec *codec;
-  AVFrame *frame, *frame_yuv;
+  AVFrame *frame;
   AVPacket *packet;
-  unsigned char *out_buffer;
-  struct SwsContext *img_convert_ctx;
   const char *file_path = "../bigbuckbunny_640x480.h265";
   int ret, v_index = -1;
   long frame_count = 0;
-  int screen_w = 0, screen_h = 0;
+  bool is_eos = false;
+  bool is_file_end = false;
 
   avformat_network_init();
 
@@ -315,27 +315,43 @@ int main(int argc, char *argv[]) {
   av_dump_format(format_ctx, 0, file_path, 0);
   printf("-------------------------------------------------\n");
 
-  while (av_read_frame(format_ctx, packet) == 0) {
-    if (packet->stream_index != v_index) {
-      av_packet_unref(packet);
-      continue;
-    }
+  while (!is_eos) {
+    if (av_read_frame(format_ctx, packet) == 0) {
+      if (packet->stream_index != v_index) {
+        av_packet_unref(packet);
+        continue;
+      }
 
-    if ((ret = avcodec_send_packet(codec_ctx, packet)) < 0) {
-      av_packet_unref(packet);
-      printf("send frame error. \n");
-      return -1;
+      if ((ret = avcodec_send_packet(codec_ctx, packet)) < 0) {
+        av_packet_unref(packet);
+        printf("send frame error. \n");
+        return -1;
+      }
+    } else {
+      is_file_end = true;
+      printf("file ended. \n");
     }
 
     if ((ret = avcodec_receive_frame(codec_ctx, frame)) != 0) {
       if (ret == AVERROR(EAGAIN)) {
-        continue;
+        if (is_file_end) {
+          printf("decoder wait for more data but file ended. \n");
+          break;
+        } else {
+          continue;
+        }
       } else if (ret == AVERROR_EOF) {
+        printf("reach the end of stream.\n");
+        is_eos = true;
         break;
       }
       av_packet_unref(packet);
       printf("decode error. (ret=%d) \n", ret);
       return -1;
+    }
+
+    if (is_file_end) {
+      printf("file ended but still rendering. \n");
     }
 
     showColorRatioByYBlack(frame_count, frame, 50);
@@ -344,55 +360,21 @@ int main(int argc, char *argv[]) {
     rgbImg = avframe_to_cvmat(frame);
     cv::imshow("Video", rgbImg);
 
-    // showColorRatioByChannel(0, rgbImg);
-    // showColorRatioByChannel(1, rgbImg);
-    // showColorRatioByChannel(2, rgbImg);
+    showColorRatioByChannel(0, rgbImg);
+    showColorRatioByChannel(1, rgbImg);
+    showColorRatioByChannel(2, rgbImg);
 
-    // showColorRatioBinaryzation(frame_count, rgbImg, 50);
-    // siftImage(frame_count, rgbImg);
+    showColorRatioBinaryzation(frame_count, rgbImg, 50);
+    siftImage(frame_count, rgbImg);
 
     frame_count++;
 
     av_packet_unref(packet);
 
-    cv::waitKey(1000 / 25);
+    cv::waitKey(1000 / 60);
   }
 
-  while (true) {
-    if ((ret = avcodec_send_packet(codec_ctx, packet)) < 0) {
-      av_packet_unref(packet);
-      printf("send frame error. \n");
-      return -1;
-    }
-
-    if ((ret = avcodec_receive_frame(codec_ctx, frame)) != 0) {
-      if (ret == AVERROR(EAGAIN)) {
-        continue;
-      } else if (ret == AVERROR_EOF) {
-        break;
-      }
-      av_packet_unref(packet);
-      printf("decode error. (ret=%d) \n", ret);
-      return -1;
-    }
-
-    showColorRatioByYBlack(frame_count, frame, 150);
-
-    cv::Mat rgbImg;
-    rgbImg = avframe_to_cvmat(frame);
-    cv::imshow("Video", rgbImg);
-
-    // showColorRatioByChannel(0, rgbImg);
-    // showColorRatioByChannel(1, rgbImg);
-    // showColorRatioByChannel(2, rgbImg);
-
-    // showColorRatioBinaryzation(frame_count, rgbImg, 100);
-    // siftImage(frame_count, rgbImg);
-
-    frame_count++;
-
-    cv::waitKey(1000 / 25);
-  }
+  printf("all compressed data have been decoded and rendered. \n");
 
   av_frame_free(&frame);
   avcodec_close(codec_ctx);
